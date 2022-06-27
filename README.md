@@ -83,7 +83,7 @@ Configure a Jenkins pipeline jon with the following options:
     * Expression: $
     * Select JSONPATH radio button
   * Token: blackduck-scan
-  * Cause: BitBucket Trigger: Project ${JSONPATH_pullRequest_fromRef_repository_project_key} Repo ${JSONPATH_pullRequest_fromRef_repository_slug} PR#${JSONPATH_pullRequest_id}
+  * Cause: BitBucket Trigger: `Project ${JSONPATH_pullRequest_fromRef_repository_project_key} Repo ${JSONPATH_pullRequest_fromRef_repository_slug} PR#${JSONPATH_pullRequest_id}`
 * Definition: Pipeline Script
 
 The Jenkinsfile in this repo provides an example. Please note the variables that
