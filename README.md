@@ -72,8 +72,7 @@ available.
 
 ### 1. Install the necessary scripts in your Jenkins build agents
 
-A small set of scripts must be installed on the Jenkins build agents that
-will be servicing the generic events for multiple projects.
+A small set of scripts must be installed on the Jenkins build agents.
 
 The [Black Duck Direct Scan Action](https://github.com/synopsys-sig-community/blackduck-direct-scan-action)
 is a Python script that provides the intelligence for running Black Duck and leaving feedback in the SCM system.
