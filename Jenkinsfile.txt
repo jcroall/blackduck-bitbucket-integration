@@ -1,56 +1,79 @@
 pipeline {
-    agent any
+  agent any
 
-    environment {
-        // BitBucket Server location
-        BITBUCKET_URL = 'http://ubuntu-server:7990'
-        // BitBucket credentials - suggest storing these in Jenkins credential storage
-        BITBUCKET_USERNAME = 'XXX'
-        BITBUCKET_PASSWORD = 'XXX'
-        // Black Duck location and credentials - suggest storing these in Jenkins credential storage
-        BLACKDUCK_URL = 'https://testing.blackduck.synopsys.com'
-        BLACKDUCK_TOKEN = 'XXCXC'
+  // Configure BitBucket and Black Duck server locations
+  environment {
+    BITBUCKET_URL = 'http://ubuntu-server:7990'
+    // This username will be combined with the access token configured in Jenkins
+    BITBUCKET_USERNAME = 'jcroall'
+    BLACKDUCK_URL = 'https://testing.blackduck.synopsys.com'
+  }
 
-        // NOTE: Also need to set up an SSH key that has permission to clone the repos that will be processed
+  tools {
+    jdk 'openjdk-11'
+  }
+
+  stages {
+    stage('Build') {
+      steps {
+        sh 'mvn -B compile'
+      }
     }
 
-    stages {
-        stage('Get Source Code') {
-            steps {
-                script {
-                    // Diagnostics
-                    //sh "env"
+    stage('Test') {
+      steps {
+        sh 'mvn -B test'
+      }
+    }
 
-                    // Clean up from previous builds, may have been other projects
-                    cleanWs()
+    // Run a Black Duck Rapid Scan on pull requests and subsequent commits to open pull requests,
+    // and push code insights into BitBucket.
+    stage('Black Duck Rapid Scan') {
+      when {
+        expression { return env.CHANGE_TARGET ==~ /(master|stage|release)/ }
+      }
 
-                    // This first step will process the webhook payload and select the SSH
-                    // method clone href for getting the source code.
-                    def git_href = sh returnStdout: true,
-                        script: '/usr/src/blackduck-bitbucket-data-center/blackduck-scan.py --bb-url $BITBUCKET_URL --blackduck-url $BLACKDUCK_URL --blackduck-token $BLACKDUCK_TOKEN --get-clone-href'
-
-                    // Next we get the branch name - for a PR, the from branch, for a push the to branch
-                    def git_branch = sh returnStdout: true,
-                        script: '/usr/src/blackduck-bitbucket-data-center/blackduck-scan.py --bb-url $BITBUCKET_URL --blackduck-url $BLACKDUCK_URL --blackduck-token $BLACKDUCK_TOKEN --get-branch'
-
-                    // Check out code from repo specified in payload
-                    git branch: git_branch,
-                        credentialsId: '214b9cff-9026-4901-bc43-34fa08c529d8',
-                        url: git_href
-
-                    // Some more quick diagnostics, just to make sure we cloned it
-                    //sh "echo INFO: Files in repo: && find . -print -maxdepth 1"
-
-                    // Invoke the Black Duck Scan and workflow integration
-                    sh "/usr/src/blackduck-bitbucket-data-center/blackduck-scan.py --debug 9 --bb-url $BITBUCKET_URL --blackduck-url $BLACKDUCK_URL --blackduck-token $BLACKDUCK_TOKEN"
-                }
-            }
+      steps {
+        script {
+          BITBUCKET_PROJECT = scm.getUserRemoteConfigs()[0].getUrl().tokenize('/')[2].split("\\.")[0]
+          BITBUCKET_REPO = scm.getUserRemoteConfigs()[0].getUrl().tokenize('/')[3].split("\\.")[0]
+          BITBUCKET_REF = env.GIT_COMMIT
+          BITBUCKET_BRANCH = env.CHANGE_BRANCH
+          BITBUCKET_PULL_NUMBER = env.CHANGE_ID
         }
-        //post {
-        //    failure {
-        //        // TODO: Post a note that the workflow failed, for now this is handled in the blackduck-scan.py
-        //        // script above.
-        //    }
-        //}
+
+        withCredentials([string(credentialsId: 'bitbucket-token', variable: 'BITBUCKET_PASSWORD')]) {
+          withCredentials([string(credentialsId: 'blackduck-token', variable: 'BLACKDUCK_TOKEN')]) {
+            // NOTE: Change path to blackduck-scan.py
+            echo "EXEC: /home/jcroall/git/github/blackduck-bitbucket-integration/blackduck-scan.py --bb-url ${BITBUCKET_URL} --blackduck-url ${BLACKDUCK_URL}"
+            sh "/home/jcroall/git/github/blackduck-bitbucket-integration/blackduck-scan.py --bb-url ${BITBUCKET_URL} --blackduck-url ${BLACKDUCK_URL}"
+          }
+        }
+      }
     }
+
+    // Run a Black Duck Intelligent Scan on pushes to main branch
+    stage('Black Duck Intelligent Scan') {
+      when {
+        expression { return !CHANGE_TARGET }
+      }
+      steps {
+        echo "EXEC: Run intelligent scan"
+      }
+    }
+
+    stage('Deploy') {
+      when {
+        expression { env.BRANCH_NAME ==~ /(master|stage|release)/ }
+      }
+      steps {
+        sh 'mvn -B install'
+      }
+    }
+  }
+  post {
+    always {
+      cleanWs()
+    }
+  }
 }
