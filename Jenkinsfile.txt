@@ -58,7 +58,23 @@ pipeline {
         expression { return !CHANGE_TARGET }
       }
       steps {
-        echo "EXEC: Run intelligent scan"
+      steps {
+        script {
+          BITBUCKET_PROJECT = scm.getUserRemoteConfigs()[0].getUrl().tokenize('/')[2].split("\\.")[0]
+          BITBUCKET_REPO = scm.getUserRemoteConfigs()[0].getUrl().tokenize('/')[3].split("\\.")[0]
+          BITBUCKET_REF = env.GIT_COMMIT
+          BITBUCKET_BRANCH = env.CHANGE_BRANCH
+          BITBUCKET_PULL_NUMBER = env.CHANGE_ID
+        }
+
+        withCredentials([string(credentialsId: 'bitbucket-token', variable: 'BITBUCKET_PASSWORD')]) {
+          withCredentials([string(credentialsId: 'blackduck-token', variable: 'BLACKDUCK_TOKEN')]) {
+            // NOTE: Change path to blackduck-scan.py
+            echo "EXEC: /home/jcroall/git/github/blackduck-bitbucket-integration/blackduck-scan.py --bb-url ${BITBUCKET_URL} --blackduck-url ${BLACKDUCK_URL}"
+            sh "/home/jcroall/git/github/blackduck-bitbucket-integration/blackduck-scan.py --bb-url ${BITBUCKET_URL} --blackduck-url ${BLACKDUCK_URL}"
+          }
+        }
+      }
       }
     }
 
