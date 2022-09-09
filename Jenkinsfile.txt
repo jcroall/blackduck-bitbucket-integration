@@ -58,7 +58,6 @@ pipeline {
         expression { return !CHANGE_TARGET }
       }
       steps {
-      steps {
         script {
           BITBUCKET_PROJECT = scm.getUserRemoteConfigs()[0].getUrl().tokenize('/')[2].split("\\.")[0]
           BITBUCKET_REPO = scm.getUserRemoteConfigs()[0].getUrl().tokenize('/')[3].split("\\.")[0]
@@ -74,7 +73,6 @@ pipeline {
             sh "/home/jcroall/git/github/blackduck-bitbucket-integration/blackduck-scan.py --bb-url ${BITBUCKET_URL} --blackduck-url ${BLACKDUCK_URL}"
           }
         }
-      }
       }
     }
 
