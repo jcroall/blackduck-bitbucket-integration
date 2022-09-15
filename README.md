@@ -23,7 +23,7 @@ the tool orchestration and execution.
 This guide will use the [BitBucket Branch Source Plugin](https://github.com/jenkinsci/bitbucket-branch-source-plugin)
 to receive events from BitBucket and execute the Black Duck scans. 
 
-![Architecture Diagram](.images/blackduck-bitbucket-architecture.png)
+![Architecture Diagram](.images/bitbucket-jenkins-hub-image.png)
 
 The [example Jenkinsfile](Jenkinsfile.txt) included in this repo shows an example of how to 
 detect whether the build is for a merge from a development branch to a production branch and run a
